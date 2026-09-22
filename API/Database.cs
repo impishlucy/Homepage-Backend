@@ -10,21 +10,19 @@ public class Database : IDisposable
     public Database()
     {
         var dbPath = "website.db";
-        
-        // Ensure the directory exists before LiteDB tries to create the file
+
         var directory = Path.GetDirectoryName(Path.GetFullPath(dbPath));
         if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
         {
             Directory.CreateDirectory(directory);
         }
 
-        // ConnectionType.Shared is the recommended best practice for ASP.NET Core web apps
-        var connectionString = new ConnectionString 
-        { 
-            Filename = dbPath, 
-            Connection = ConnectionType.Shared 
+        var connectionString = new ConnectionString
+        {
+            Filename = dbPath,
+            Connection = ConnectionType.Shared
         };
-        
+
         _db = new LiteDatabase(connectionString);
         _disposeDb = true;
 
@@ -37,11 +35,31 @@ public class Database : IDisposable
         projects.EnsureIndex(x => x.Id, true);
     }
 
+    private static int ParseProjectId(string? id) => int.TryParse(id, out var n) ? n : int.MaxValue;
+
+    private void RenumberProjects(ILiteCollection<Types.ProjectData> col)
+    {
+        var all = col.FindAll().OrderBy(p => ParseProjectId(p.Id)).ToList();
+        col.DeleteAll();
+        for (int i = 0; i < all.Count; i++)
+        {
+            all[i].Id = (i + 1).ToString();
+            col.Insert(all[i]);
+        }
+    }
+
+    private bool UpsertSingleton<T>(string collection, T data)
+    {
+        var col = _db.GetCollection<T>(collection);
+        col.DeleteAll();
+        col.Insert(data);
+        return true;
+    }
+
     public bool CheckDBHealth()
     {
         try
         {
-            // A simple ping to verify the database file is accessible
             _db.GetCollection<Types.HomeData>("home").Count();
             return true;
         }
@@ -60,88 +78,89 @@ public class Database : IDisposable
             About = _db.GetCollection<Types.AboutData>("about").FindOne(x => true),
             Contact = _db.GetCollection<Types.ContactData>("contact").FindOne(x => true),
             Projects = _db.GetCollection<Types.ProjectData>("projects").FindAll().ToList(),
-            Imprint =  _db.GetCollection<Types.ImprintData>("imprint").FindOne(x => true),
+            Imprint = _db.GetCollection<Types.ImprintData>("imprint").FindOne(x => true),
         });
     }
 
     public async Task<Types.HomeData> GetHomeDataAsync()
     {
-        return await Task.Run(() =>
-        {
-            var user = _db.GetCollection<Types.HomeData>("home");
-            var userInfo = user.FindOne(x => true);
-            return userInfo;
-        });
+        return await Task.Run(() => _db.GetCollection<Types.HomeData>("home").FindOne(x => true));
     }
-    
+
     public async Task<Types.AboutData> GetAboutDataAsync()
     {
-        return await Task.Run(() =>
-        {
-            var user = _db.GetCollection<Types.AboutData>("about");
-            var userInfo = user.FindOne(x => true);
-            return userInfo;
-        });
+        return await Task.Run(() => _db.GetCollection<Types.AboutData>("about").FindOne(x => true));
     }
-    
+
     public async Task<Types.ContactData> GetContactDataAsync()
     {
-        return await Task.Run(() =>
-        {
-            var user = _db.GetCollection<Types.ContactData>("contact");
-            var userInfo = user.FindOne(x => true);
-            return userInfo;
-        });
+        return await Task.Run(() => _db.GetCollection<Types.ContactData>("contact").FindOne(x => true));
     }
 
     public async Task<List<Types.ProjectData>> GetProjectsAsync()
     {
         return await Task.Run(() => _db.GetCollection<Types.ProjectData>("projects")
-            .Query()
-            .OrderByDescending(x => x.Id)
+            .FindAll()
+            .OrderByDescending(p => ParseProjectId(p.Id))
             .ToList());
     }
-    
+
     public async Task<Types.ImprintData> GetImprintDataAsync()
     {
-        return await Task.Run(() =>
-        {
-            var user = _db.GetCollection<Types.ImprintData>("imprint");
-            var userInfo = user.FindOne(x => true);
-            return userInfo;
-        });
+        return await Task.Run(() => _db.GetCollection<Types.ImprintData>("imprint").FindOne(x => true));
     }
-    
-    public async Task<string> GetLoginDataAsync()
+
+    public async Task<bool> UpdateHomeAsync(Types.HomeData data) =>
+        await Task.Run(() => UpsertSingleton("home", data));
+
+    public async Task<bool> UpdateAboutAsync(Types.AboutData data) =>
+        await Task.Run(() => UpsertSingleton("about", data));
+
+    public async Task<bool> UpdateContactAsync(Types.ContactData data) =>
+        await Task.Run(() => UpsertSingleton("contact", data));
+
+    public async Task<bool> UpdateImprintAsync(Types.ImprintData data) =>
+        await Task.Run(() => UpsertSingleton("imprint", data));
+
+    public async Task<bool> UpdateProjectsAsync(List<Types.ProjectData> projects)
     {
         return await Task.Run(() =>
         {
-            var user = _db.GetCollection<string>("login-url");
-            var userInfo = user.FindOne(x => true);
-            return userInfo;
-        });
-    }
-
-    public async Task<bool> UpdateUserBasicAsync(Types.HomeData data)
-    {
-        return await Task.Run(() =>
-        {
-            var users = _db.GetCollection<Types.HomeData>("user");
-            var user = users.FindOne(x => true);
-            
-            if (user == null) return false;
-
-            bool updated = false;
-            if (data.User != null) { user.User = data.User; updated = true; }
-            if (data.Blurp != null) { user.Blurp = data.Blurp; updated = true; }
-            if (data.Avatar != null) { user.Avatar = data.Avatar; updated = true; }
-
-            if (updated)
+            var col = _db.GetCollection<Types.ProjectData>("projects");
+            col.DeleteAll();
+            foreach (var p in projects)
             {
-                return users.Update(user);
+                if (string.IsNullOrEmpty(p.Id))
+                {
+                    p.Id = ObjectId.NewObjectId().ToString();
+                }
+                col.Insert(p);
             }
+            return true;
+        });
+    }
 
-            return false;
+    public async Task<Types.ProjectData> AddProjectAsync(Types.ProjectData project)
+    {
+        return await Task.Run(() =>
+        {
+            ILiteCollection<Types.ProjectData> col = _db.GetCollection<Types.ProjectData>("projects");
+            RenumberProjects(col);
+            project.Id = (col.Count() + 1).ToString();
+            col.Insert(project);
+            return project;
+        });
+    }
+
+    public async Task<bool> DeleteProjectAsync(string id)
+    {
+        return await Task.Run(() =>
+        {
+            ILiteCollection<Types.ProjectData> col = _db.GetCollection<Types.ProjectData>("projects");
+            if (col.FindById(id) == null) return false;
+            col.Delete(id);
+            RenumberProjects(col);
+            return true;
         });
     }
 
