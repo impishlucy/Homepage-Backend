@@ -1,4 +1,5 @@
 using LiteDB;
+using System.Text.Json.Serialization;
 
 namespace API;
 
@@ -6,6 +7,8 @@ public static class Types
 {
     public class ProjectData
     {
+        [JsonConstructor]
+        public ProjectData() { }
         public string Id { get; set; } = ObjectId.NewObjectId().ToString();
         public string? Title { get; set; }
         public string? Description { get; set; }
@@ -16,6 +19,8 @@ public static class Types
 
     public class HomeData
     {
+        [JsonConstructor]
+        public HomeData() { }
         public string? User { get; set; }
         public string? Blurp { get; set; }
         public string? Avatar { get; set; }
@@ -23,6 +28,8 @@ public static class Types
 
     public class AboutData
     {
+        [JsonConstructor]
+        public AboutData() { }
         public string? FullName { get; set; }
         public int? Age { get; set; }
         public string? Pronouns { get; set; }
@@ -33,6 +40,8 @@ public static class Types
 
     public class ContactData
     {
+        [JsonConstructor]
+        public ContactData() { }
         public string? Email { get; set; }
         public string? Phone { get; set; }
         public string? Discord { get; set; }
@@ -42,6 +51,8 @@ public static class Types
 
     public class ImprintData
     {
+        [JsonConstructor]
+        public ImprintData() { }
         public string? Name { get; set; }
         public string? Email { get; set; }
         public string? Phone { get; set; }
@@ -50,6 +61,8 @@ public static class Types
 
     public class AllData
     {
+        [JsonConstructor]
+        public AllData() { } 
         public HomeData? User { get; set; }
         public AboutData? About { get; set; }
         public ContactData? Contact { get; set; }
@@ -59,6 +72,8 @@ public static class Types
 
     public struct Experience
     {
+        [JsonConstructor]
+        public Experience() { }
         public string? JobTitle { get; set; }
         public string? CompanyName { get; set; }
         public string? JobDescription { get; set; }

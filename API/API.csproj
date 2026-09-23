@@ -1,9 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        
+        <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
     </PropertyGroup>
 
     <ItemGroup>
@@ -13,4 +14,9 @@
       <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Update=".env">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
 </Project>
