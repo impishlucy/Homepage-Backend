@@ -111,27 +111,34 @@ public static class AdminEndpoints
             
             var token = authHeader.Substring("Bearer ".Length).Trim();
             
+            // ONLY catch JWT validation errors here. 
+            // DO NOT wrap 'await next(ctx)' in this try/catch, or endpoint crashes will be masked as 401s!
+            ClaimsPrincipal? principal = null;
             try
             {
-                var principal = ValidateJwtToken(token, jwtKey, jwtIssuer, jwtAudience);
-                ctx.HttpContext.Items["User"] = principal;
-                
-                var userId = principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var newToken = userId != null ? GenerateJwtToken(userId, jwtKey, jwtIssuer, jwtAudience) : null;
-                
-                var result = await next(ctx);
-                
-                if (newToken != null && result is IResult okResult)
-                {
-                    ctx.HttpContext.Response.Headers["X-New-Token"] = newToken;
-                }
-                
-                return result;
+                principal = ValidateJwtToken(token, jwtKey, jwtIssuer, jwtAudience);
             }
             catch
             {
                 return Results.Unauthorized();
             }
+
+            if (principal == null) return Results.Unauthorized();
+
+            ctx.HttpContext.Items["User"] = principal;
+            
+            var userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var newToken = userId != null ? GenerateJwtToken(userId, jwtKey, jwtIssuer, jwtAudience) : null;
+            
+            // Execute the endpoint logic safely
+            var result = await next(ctx);
+            
+            if (newToken != null && result is IResult)
+            {
+                ctx.HttpContext.Response.Headers["X-New-Token"] = newToken;
+            }
+            
+            return result;
         });
         
         adminGroup.MapGet("/dashboard", async (Database db) =>
@@ -172,7 +179,7 @@ public static class AdminEndpoints
             HandleUpdate<Types.ImprintData>(ctx, db, (d, p) => d.UpdateImprintAsync(p)));
             
         adminGroup.MapPut("/update/projects", (HttpContext ctx, Database db) =>
-            HandleUpdate<List<Types.ProjectData>>(ctx, db, (d, p) => d.UpdateProjectsAsync(p)));
+            HandleUpdate<Types.ProjectDataMap>(ctx, db, (d, p) => d.UpdateProjectsAsync(p)));
         
         adminGroup.MapPost("/projects", async (HttpContext ctx, Database db) =>
         {
@@ -203,8 +210,22 @@ public static class AdminEndpoints
         if (GetUserId(ctx) == null) return Results.Unauthorized();
         using var reader = new StreamReader(ctx.Request.Body);
         var body = await reader.ReadToEndAsync();
-        var payload = JsonSerializer.Deserialize<T>(body, _jsonOptions);
+        
+        
+        T? payload;
+        try
+        {
+            payload = JsonSerializer.Deserialize<T>(body, _jsonOptions);
+        }
+        catch (Exception ex)
+        {
+            // If JSON parsing fails, return a 400 Bad Request with the exact reason 
+            // so you can see it in the browser network tab instead of a 500/401.
+            return Results.BadRequest(new ErrorResponse($"JSON Deserialization failed: {ex.Message}"));
+        }
+
         if (payload == null) return Results.BadRequest(new ErrorResponse("Invalid request body"));
+        
         var success = await update(db, payload);
         return success
             ? Results.Ok(new MessageResponse("Updated successfully"))

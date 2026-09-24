@@ -17,6 +17,14 @@ public static class Types
         public List<string>? Technologies { get; set; }
     }
 
+    public class ProjectDataMap
+    {
+        [JsonConstructor]
+        
+        public ProjectDataMap() { }
+        public ProjectData[] Projects { get; set; }
+    }
+
     public class HomeData
     {
         [JsonConstructor]
@@ -35,7 +43,6 @@ public static class Types
         public string? Pronouns { get; set; }
         public string? Bio { get; set; }
         public List<Experience>? JobExperiences { get; set; }
-        public List<string>? Technologies { get; set; }
     }
 
     public class ContactData
@@ -70,7 +77,7 @@ public static class Types
         public ImprintData? Imprint { get; set; }
     }
 
-    public struct Experience
+    public class Experience
     {
         [JsonConstructor]
         public Experience() { }

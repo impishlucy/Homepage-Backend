@@ -122,15 +122,15 @@ public class Database : IDisposable
     public async Task<bool> UpdateImprintAsync(Types.ImprintData data) =>
         await Task.Run(() => UpsertSingleton("imprint", data));
 
-    public async Task<bool> UpdateProjectsAsync(List<Types.ProjectData> projects)
+    public async Task<bool> UpdateProjectsAsync(Types.ProjectDataMap projects)
     {
         return await Task.Run(() =>
         {
             var col = _db.GetCollection<Types.ProjectData>("projects");
             col.DeleteAll();
-            foreach (var p in projects)
+            foreach (var p in projects.Projects)
             {
-                if (string.IsNullOrEmpty(p.Id))
+                if (string.IsNullOrEmpty(p.Id)) continue;
                 {
                     p.Id = ObjectId.NewObjectId().ToString();
                 }
