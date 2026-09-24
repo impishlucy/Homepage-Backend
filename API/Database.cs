@@ -77,7 +77,13 @@ public class Database : IDisposable
             User = _db.GetCollection<Types.HomeData>("home").FindOne(x => true),
             About = _db.GetCollection<Types.AboutData>("about").FindOne(x => true),
             Contact = _db.GetCollection<Types.ContactData>("contact").FindOne(x => true),
-            Projects = _db.GetCollection<Types.ProjectData>("projects").FindAll().ToList(),
+        
+            // 👇 CHANGE THIS: Wrap the array in ProjectDataMap
+            Projects = new Types.ProjectDataMap 
+            { 
+                Projects = _db.GetCollection<Types.ProjectData>("projects").FindAll().ToArray() 
+            },
+        
             Imprint = _db.GetCollection<Types.ImprintData>("imprint").FindOne(x => true),
         });
     }
@@ -127,14 +133,18 @@ public class Database : IDisposable
         return await Task.Run(() =>
         {
             var col = _db.GetCollection<Types.ProjectData>("projects");
-            col.DeleteAll();
+            col.DeleteAll(); 
+        
             foreach (var p in projects.Projects)
             {
-                if (string.IsNullOrEmpty(p.Id)) continue;
+                // ONLY generate a new ID if it is actually missing
+                if (string.IsNullOrEmpty(p.Id))
                 {
                     p.Id = ObjectId.NewObjectId().ToString();
                 }
-                col.Insert(p);
+            
+                // Upsert is safer: it updates the record if the ID exists, or inserts it if it's new.
+                col.Upsert(p);
             }
             return true;
         });

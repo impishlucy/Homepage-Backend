@@ -53,7 +53,11 @@ public static class PublicEndpoints
             try
             {
                 var projects = await db.GetProjectsAsync();
-                return Results.Ok(projects ?? new List<Types.ProjectData>());
+                
+                return Results.Ok(new Types.ProjectDataMap 
+                { 
+                    Projects = projects?.ToArray() ?? Array.Empty<Types.ProjectData>() 
+                });
             }
             catch (Exception ex)
             {

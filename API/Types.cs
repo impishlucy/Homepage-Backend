@@ -73,7 +73,7 @@ public static class Types
         public HomeData? User { get; set; }
         public AboutData? About { get; set; }
         public ContactData? Contact { get; set; }
-        public List<ProjectData>? Projects { get; set; }
+        public ProjectDataMap? Projects { get; set; } 
         public ImprintData? Imprint { get; set; }
     }
 
