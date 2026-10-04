@@ -9,8 +9,6 @@ Env.Load();
 
 builder.Services.AddSingleton<Database>();
 builder.Services.AddEndpointsApiExplorer();
-
-// CLEANED UP: Removed DefaultJsonTypeInfoResolver as .csproj handles reflection globally
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.PropertyNameCaseInsensitive = true;
@@ -23,7 +21,13 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
-var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "https://lucy-codes.de";
+var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "";
+
+if (frontendUrl == String.Empty)
+{
+    Console.WriteLine("Frontend URL is missing. Shutting down...");
+    return;
+}
 
 builder.Services.AddCors(options =>
 {

@@ -27,7 +27,7 @@ public static class AdminEndpoints
         {
             if (string.IsNullOrEmpty(code))
             {
-                return Results.BadRequest(new ErrorResponse("Missing authorization code"));
+                return Results.StatusCode(412); //Precondition failed
             }
 
             var clientId = Environment.GetEnvironmentVariable("DISCORD_CLIENT_ID");
@@ -37,7 +37,7 @@ public static class AdminEndpoints
 
             if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret) || string.IsNullOrEmpty(redirectUri))
             {
-                return Results.BadRequest(new ErrorResponse("Server OAuth configuration error."));
+                return Results.StatusCode(418); //I don't even know, so im a Teapot.
             }
 
             var tokenRequest = new Dictionary<string, string>
@@ -57,7 +57,7 @@ public static class AdminEndpoints
             var tokenResponse = await _httpClient.SendAsync(tokenHttpRequest);
             if (!tokenResponse.IsSuccessStatusCode)
             {
-                return Results.BadRequest(new ErrorResponse("Failed to exchange code for token"));
+                return Results.Unauthorized();
             }
 
             var tokenJson = await tokenResponse.Content.ReadAsStringAsync();
@@ -65,7 +65,7 @@ public static class AdminEndpoints
             
             if (!document.RootElement.TryGetProperty("access_token", out var accessTokenElement))
             {
-                return Results.BadRequest(new ErrorResponse("Invalid token response from Discord"));
+                return Results.Unauthorized();
             }
             var accessToken = accessTokenElement.GetString();
 
@@ -85,7 +85,7 @@ public static class AdminEndpoints
             
             if (discordUser?.Id != adminId)
             {
-                return Results.Forbid();
+                return Results.Unauthorized();
             }
             
             var jwtToken = GenerateJwtToken(discordUser.Id, jwtKey, jwtIssuer, jwtAudience);
@@ -179,18 +179,7 @@ public static class AdminEndpoints
             HandleUpdate<Types.ImprintData>(ctx, db, (d, p) => d.UpdateImprintAsync(p)));
             
         adminGroup.MapPut("/update/projects", (HttpContext ctx, Database db) =>
-            HandleUpdate<Types.ProjectDataMap>(ctx, db, (d, p) => d.UpdateProjectsAsync(p)));
-        
-        adminGroup.MapPost("/projects", async (HttpContext ctx, Database db) =>
-        {
-            if (GetUserId(ctx) == null) return Results.Unauthorized();
-            using var reader = new StreamReader(ctx.Request.Body);
-            var body = await reader.ReadToEndAsync();
-            var project = JsonSerializer.Deserialize<Types.ProjectData>(body, _jsonOptions);
-            if (project == null) return Results.BadRequest(new ErrorResponse("Invalid request body"));
-            var created = await db.AddProjectAsync(project);
-            return Results.Ok(created);
-        });
+            HandleUpdate<Types.ProjectData>(ctx, db, (d, p) => d.UpdateProjectsAsync(p)));
         
         adminGroup.MapDelete("/projects/{id}", async (HttpContext ctx, Database db, string id) =>
         {

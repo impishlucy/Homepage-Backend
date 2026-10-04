@@ -5,10 +5,10 @@ namespace API;
 
 public static class Types
 {
-    public class ProjectData
+    public class Project
     {
         [JsonConstructor]
-        public ProjectData() { }
+        public Project() { }
         public string Id { get; set; } = ObjectId.NewObjectId().ToString();
         public string? Title { get; set; }
         public string? Description { get; set; }
@@ -17,12 +17,12 @@ public static class Types
         public List<string>? Technologies { get; set; }
     }
 
-    public class ProjectDataMap
+    public class ProjectData
     {
         [JsonConstructor]
         
-        public ProjectDataMap() { }
-        public ProjectData[] Projects { get; set; }
+        public ProjectData() { }
+        public Project[] Projects { get; set; }
     }
 
     public class HomeData
@@ -73,7 +73,7 @@ public static class Types
         public HomeData? User { get; set; }
         public AboutData? About { get; set; }
         public ContactData? Contact { get; set; }
-        public ProjectDataMap? Projects { get; set; } 
+        public ProjectData? Projects { get; set; } 
         public ImprintData? Imprint { get; set; }
     }
 

@@ -31,13 +31,13 @@ public class Database : IDisposable
 
     private void EnsureIndexes()
     {
-        var projects = _db.GetCollection<Types.ProjectData>("projects");
+        var projects = _db.GetCollection<Types.Project>("projects");
         projects.EnsureIndex(x => x.Id, true);
     }
 
     private static int ParseProjectId(string? id) => int.TryParse(id, out var n) ? n : int.MaxValue;
 
-    private void RenumberProjects(ILiteCollection<Types.ProjectData> col)
+    private void RenumberProjects(ILiteCollection<Types.Project> col)
     {
         var all = col.FindAll().OrderBy(p => ParseProjectId(p.Id)).ToList();
         col.DeleteAll();
@@ -77,13 +77,7 @@ public class Database : IDisposable
             User = _db.GetCollection<Types.HomeData>("home").FindOne(x => true),
             About = _db.GetCollection<Types.AboutData>("about").FindOne(x => true),
             Contact = _db.GetCollection<Types.ContactData>("contact").FindOne(x => true),
-        
-            // 👇 CHANGE THIS: Wrap the array in ProjectDataMap
-            Projects = new Types.ProjectDataMap 
-            { 
-                Projects = _db.GetCollection<Types.ProjectData>("projects").FindAll().ToArray() 
-            },
-        
+            Projects = _db.GetCollection<Types.ProjectData>("projects").FindOne(x => true),
             Imprint = _db.GetCollection<Types.ImprintData>("imprint").FindOne(x => true),
         });
     }
@@ -103,12 +97,9 @@ public class Database : IDisposable
         return await Task.Run(() => _db.GetCollection<Types.ContactData>("contact").FindOne(x => true));
     }
 
-    public async Task<List<Types.ProjectData>> GetProjectsAsync()
+    public async Task<Types.ProjectData> GetProjectsAsync()
     {
-        return await Task.Run(() => _db.GetCollection<Types.ProjectData>("projects")
-            .FindAll()
-            .OrderByDescending(p => ParseProjectId(p.Id))
-            .ToList());
+        return await Task.Run(() => _db.GetCollection<Types.ProjectData>("projects").FindOne(x => true));
     }
 
     public async Task<Types.ImprintData> GetImprintDataAsync()
@@ -128,37 +119,21 @@ public class Database : IDisposable
     public async Task<bool> UpdateImprintAsync(Types.ImprintData data) =>
         await Task.Run(() => UpsertSingleton("imprint", data));
 
-    public async Task<bool> UpdateProjectsAsync(Types.ProjectDataMap projects)
+    public async Task<bool> UpdateProjectsAsync(Types.ProjectData projects)
     {
         return await Task.Run(() =>
         {
-            var col = _db.GetCollection<Types.ProjectData>("projects");
-            col.DeleteAll(); 
-        
-            foreach (var p in projects.Projects)
-            {
-                // ONLY generate a new ID if it is actually missing
-                if (string.IsNullOrEmpty(p.Id))
-                {
-                    p.Id = ObjectId.NewObjectId().ToString();
-                }
+            //Delte outdated data
+            _db.GetCollection<Types.Project>("projects").DeleteAll();
+            _db.GetCollection<Types.ProjectData>("projects").DeleteAll();
             
-                // Upsert is safer: it updates the record if the ID exists, or inserts it if it's new.
-                col.Upsert(p);
-            }
+            var col = _db.GetCollection<Types.ProjectData>("projects");
+            col.DeleteAll();
+            
+            //Insert new Data
+            col.Insert(projects);
+            
             return true;
-        });
-    }
-
-    public async Task<Types.ProjectData> AddProjectAsync(Types.ProjectData project)
-    {
-        return await Task.Run(() =>
-        {
-            ILiteCollection<Types.ProjectData> col = _db.GetCollection<Types.ProjectData>("projects");
-            RenumberProjects(col);
-            project.Id = (col.Count() + 1).ToString();
-            col.Insert(project);
-            return project;
         });
     }
 
@@ -166,7 +141,7 @@ public class Database : IDisposable
     {
         return await Task.Run(() =>
         {
-            ILiteCollection<Types.ProjectData> col = _db.GetCollection<Types.ProjectData>("projects");
+            ILiteCollection<Types.Project> col = _db.GetCollection<Types.Project>("projects");
             if (col.FindById(id) == null) return false;
             col.Delete(id);
             RenumberProjects(col);
