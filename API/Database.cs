@@ -34,19 +34,7 @@ public class Database : IDisposable
         var projects = _db.GetCollection<Types.Project>("projects");
         projects.EnsureIndex(x => x.Id, true);
     }
-
-    private static int ParseProjectId(string? id) => int.TryParse(id, out var n) ? n : int.MaxValue;
-
-    private void RenumberProjects(ILiteCollection<Types.Project> col)
-    {
-        var all = col.FindAll().OrderBy(p => ParseProjectId(p.Id)).ToList();
-        col.DeleteAll();
-        for (int i = 0; i < all.Count; i++)
-        {
-            all[i].Id = (i + 1).ToString();
-            col.Insert(all[i]);
-        }
-    }
+    
 
     private bool UpsertSingleton<T>(string collection, T data)
     {
@@ -133,18 +121,6 @@ public class Database : IDisposable
             //Insert new Data
             col.Insert(projects);
             
-            return true;
-        });
-    }
-
-    public async Task<bool> DeleteProjectAsync(string id)
-    {
-        return await Task.Run(() =>
-        {
-            ILiteCollection<Types.Project> col = _db.GetCollection<Types.Project>("projects");
-            if (col.FindById(id) == null) return false;
-            col.Delete(id);
-            RenumberProjects(col);
             return true;
         });
     }

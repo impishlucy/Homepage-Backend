@@ -180,15 +180,6 @@ public static class AdminEndpoints
             
         adminGroup.MapPut("/update/projects", (HttpContext ctx, Database db) =>
             HandleUpdate<Types.ProjectData>(ctx, db, (d, p) => d.UpdateProjectsAsync(p)));
-        
-        adminGroup.MapDelete("/projects/{id}", async (HttpContext ctx, Database db, string id) =>
-        {
-            if (GetUserId(ctx) == null) return Results.Unauthorized();
-            var success = await db.DeleteProjectAsync(id);
-            return success
-                ? Results.Ok(new MessageResponse("Project deleted"))
-                : Results.NotFound(new ErrorResponse("Project not found"));
-        });
     }
     
     private static string? GetUserId(HttpContext ctx) =>
