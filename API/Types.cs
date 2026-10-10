@@ -25,6 +25,17 @@ public static class Types
         public Project[] Projects { get; set; }
     }
 
+    public class Links
+    {
+        [JsonConstructor]
+        public Links() { }
+        public string? Github { get; set; }
+        public string? YouTube { get; set; }
+        public string? Bluesky { get; set; }
+        public string? Tiktok { get; set; }
+        public string? Instagram { get; set; }
+    }
+
     public class HomeData
     {
         [JsonConstructor]
@@ -32,6 +43,7 @@ public static class Types
         public string? User { get; set; }
         public string? Blurp { get; set; }
         public string? Avatar { get; set; }
+        public Links? Links { get; set; }
     }
 
     public class AboutData
