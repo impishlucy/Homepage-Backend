@@ -51,7 +51,7 @@ public static class Types
         [JsonConstructor]
         public AboutData() { }
         public string? FullName { get; set; }
-        public int? Age { get; set; }
+        public DateTime? BirthDate { get; set; }
         public string? Pronouns { get; set; }
         public string? Bio { get; set; }
         public List<Experience>? JobExperiences { get; set; }
