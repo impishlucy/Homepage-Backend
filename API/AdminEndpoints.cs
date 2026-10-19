@@ -82,8 +82,13 @@ public static class AdminEndpoints
             
             // Deserializes cleanly now because DiscordUser has an explicit parameterless constructor
             var discordUser = JsonSerializer.Deserialize<DiscordUser>(userJson, _jsonOptions);
+
+            if (discordUser == null)
+            {
+                return Results.Unauthorized();
+            }
             
-            if (discordUser?.Id != adminId)
+            if (discordUser.Id != adminId)
             {
                 return Results.Unauthorized();
             }

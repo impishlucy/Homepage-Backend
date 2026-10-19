@@ -22,7 +22,7 @@ public static class Types
         [JsonConstructor]
         
         public ProjectData() { }
-        public Project[] Projects { get; set; }
+        public required Project[] Projects { get; set; }
     }
 
     public class Links
